@@ -1,10 +1,23 @@
 # godsect
 
-A utility to create Go structure types from DSECT information in ADATA file created by HLASM.
+Generates Go struct types from DSECT layouts stored in an ADATA file produced by HLASM.
 
-# Example
+Useful when you need Go representations of assembler data areas, including field offsets, sizes, and alignment gaps.
 
-HLASM assembly source: `example.asm`
+## Usage
+
+```
+godsect -i input.ad -o output.go [-n] [-v]
+```
+
+- `-i`: input ADATA file (default: stdin)
+- `-o`: output Go file (default: stdout)
+- `-n`: skip `gofmt` formatting
+- `-v`: enable verbose diagnostics
+
+## Example
+
+Given this HLASM source (`example.asm`):
 
 ```
 TRY CSECT
@@ -62,20 +75,20 @@ LISTFORM IFAUSAGE MF=(L,LIST1)
          END
 ```
 
-- Create ADATA file example.ad
+1. Generate the ADATA file (`example.ad`):
 
 ```
-/bin/as --gadata=example.ad -m goff -a=example.lst example.asm`
+/bin/as --gadata=example.ad -m goff -a=example.lst example.asm
  Assembler Done No Statements Flagged
 ```
 
-- Run godsect on ADATA file example.ad
+2. Run `godsect` on the ADATA file:
 
 ```
 godsect -i example.ad -o out.go
 ```
 
-File: out.go contains:
+The generated file (`out.go`) contains:
 
 ```
 type Count struct {

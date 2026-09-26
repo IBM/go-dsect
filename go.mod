@@ -1,3 +1,3 @@
 module github.com/IBM/godsect
 
-go 1.20.1
+go 1.26

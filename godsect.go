@@ -210,11 +210,11 @@ func (ad *AdParse) Parse() (err error) {
 		ad.VerbosePrintf("Record Type %+v\n", recordTypes[ad.CHeader.RecType])
 		er := ad.FillBuf(int(ad.CHeader.DataLen))
 		if er != nil {
-			err = err
+			err = er
 			return
 		}
 		ad.VerbosePrintf("Record Data for type %04x\n", ad.CHeader.RecType)
-		ad.DiagDump(uintptr(unsafe.Pointer(&ad.Buffer[0])), uintptr(ad.CHeader.DataLen))
+		ad.DiagDump(ad.Buffer[:ad.CHeader.DataLen])
 		switch ad.CHeader.RecType {
 		case 0x0020:
 			if ad.Buffer[0] == 0xff {
@@ -450,12 +450,13 @@ var hexchar [16]byte = [16]byte{
 	'c', 'd', 'e', 'f',
 }
 
-func (ad *AdParse) DiagDump(ptr uintptr, size uintptr) {
+func (ad *AdParse) DiagDump(data []byte) {
 	var line [90]byte
-	var i uintptr
-	for size > 0 {
-		lbl := ptr
-		bits := (unsafe.Sizeof(lbl) * 8)
+	var i int
+	off := 0
+	for off < len(data) {
+		lbl := uintptr(unsafe.Pointer(&data[off]))
+		bits := int(unsafe.Sizeof(lbl) * 8)
 		for bits > 0 {
 			if 0 == (0x0f & (lbl >> (bits - 4))) {
 				bits -= 4
@@ -473,23 +474,22 @@ func (ad *AdParse) DiagDump(ptr uintptr, size uintptr) {
 		line[i] = ' '
 		i++
 
-		ascptr := ptr
-		ascsize := size
-		ebcptr := ptr
-		ebcsize := size
+		remaining := len(data) - off
+		chunk := remaining
+		if chunk > 16 {
+			chunk = 16
+		}
 
 		fmt1 := 0
 		fmt2 := 16
 
 		for ; fmt1 < fmt2; fmt1++ {
-			if size > 0 {
-				b := *(*byte)(unsafe.Pointer(ptr))
+			if fmt1 < chunk {
+				b := data[off+fmt1]
 				line[i] = hexchar[0x0f&(b>>4)]
 				i++
 				line[i] = hexchar[0x0f&(b)]
 				i++
-				size--
-				ptr++
 			} else {
 				line[i] = ' '
 				i++
@@ -502,11 +502,9 @@ func (ad *AdParse) DiagDump(ptr uintptr, size uintptr) {
 			}
 		}
 		for fmt1 = 0; fmt1 < fmt2; fmt1++ {
-			if ascsize > 0 {
-				b := *(*byte)(unsafe.Pointer(ascptr))
+			if fmt1 < chunk {
+				b := data[off+fmt1]
 				line[i] = atbl[0xff&b]
-				ascsize--
-				ascptr++
 			} else {
 				line[i] = ' '
 			}
@@ -515,11 +513,9 @@ func (ad *AdParse) DiagDump(ptr uintptr, size uintptr) {
 		line[i] = ' '
 		i++
 		for fmt1 = 0; fmt1 < fmt2; fmt1++ {
-			if ebcsize > 0 {
-				b := *(*byte)(unsafe.Pointer(ebcptr))
+			if fmt1 < chunk {
+				b := data[off+fmt1]
 				line[i] = etbl[0xff&b]
-				ebcsize--
-				ebcptr++
 			} else {
 				line[i] = ' '
 			}
@@ -528,6 +524,7 @@ func (ad *AdParse) DiagDump(ptr uintptr, size uintptr) {
 		line[i] = 0
 		ad.VerbosePrintf("\t%s\n", string(line[0:i]))
 		i = 0
+		off += chunk
 	}
 }
 
